@@ -19,13 +19,14 @@
         "php": ">=8.0",
         "doctrine/dbal": "^2.6|^3.1",
         "laravel/framework": "~7|~8|~9|~10|~11",
-        "pragmarx/support": "~0.6|~0.7|~0.8|~0.9",
         "ramsey/uuid": "^3 || ^4",
-        "jenssegers/agent": "^2.6",
-        "ua-parser/uap-php" : "~3.4",
+        "jenssegers/agent": "~2.1",
+        "ua-parser/uap-php": "~3.4",
+        "pragmarx/datatables": "dev-master",
         "snowplow/referer-parser": "~0.1",
         "jaybizzle/crawler-detect": "~1.0",
-        "psr/log": "^1.1 || ^2.0 || ^3.0"
+        "psr/log": "^1.1 || ^2.0 || ^3.0",
+        "deivide/laravel-support": "^0.9.4"
     },
 
     "suggest": {
