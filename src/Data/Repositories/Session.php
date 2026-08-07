@@ -41,9 +41,19 @@ class Session extends Repository
 
     public function getCurrentId($sessionInfo)
     {
-        $this->setSessionData($sessionInfo);
+        if ($sessionInfo['user_id'] && $this->getSessionResult($sessionInfo)) {
+            $session = $this->find($this->getSessionResult($sessionInfo)->_id);
 
-        return $this->sessionGetId($sessionInfo);
+            $session->updated_at = Carbon::now();
+
+            $session->save();
+
+            return $this->getSessionResult($sessionInfo)->_id;
+        } else {
+            $this->setSessionData($sessionInfo);
+
+            return $this->sessionGetId($sessionInfo);
+        }
     }
 
     public function setSessionData($sessinInfo)
@@ -53,6 +63,23 @@ class Session extends Repository
         if ($this->sessionIsKnownOrCreateSession()) {
             $this->ensureSessionDataIsComplete();
         }
+    }
+
+    private function getSessionResult($sessionInfo)
+    {
+        return $this
+            ->getSessions()
+            ->where('user_id', $sessionInfo['user_id'])
+            ->where('user_type', $sessionInfo['user_type'])
+            ->where('device_id', $sessionInfo['device_id'])
+            ->where('client_ip', $sessionInfo['client_ip'])
+            ->where('geoip_id', $sessionInfo['geoip_id'])
+            ->where('agent_id', $sessionInfo['agent_id'])
+            ->where('cookie_id', $sessionInfo['cookie_id'])
+            ->where('language_id', $sessionInfo['language_id'])
+            ->where('is_robot', $sessionInfo['is_robot'])
+            ->orderBy('updated_at', 'desc')
+            ->first();
     }
 
     private function generateSession($sessionInfo)
