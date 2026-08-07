@@ -3,6 +3,7 @@
 namespace PragmaRX\Tracker\Support;
 
 use Cache as IlluminateCache;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Application;
 use PragmaRX\Support\Config as Config;
@@ -31,6 +32,10 @@ class Cache
     public function cachePut($cacheKey, $model)
     {
         if ($this->config->get('cache_enabled')) {
+            if ($model instanceof Model) {
+                $model = $model->getAttributes();
+            }
+
             $this->cache->put($cacheKey, $model, $this->ttl);
         }
     }
@@ -101,10 +106,16 @@ class Cache
 
         $key = $this->makeCacheKey($attributes, $keys, $identifier);
 
-        return [
-            $this->findCachedWithKey($key),
-            $key,
-        ];
+        $cached = $this->findCachedWithKey($key);
+
+        if (is_array($cached) && $identifier) {
+            $model = new $identifier();
+            $model->setRawAttributes($cached, true);
+
+            $cached = $model;
+        }
+
+        return [$cached, $key];
     }
 
     public function makeCacheKey($attributes, $keys, $identifier)

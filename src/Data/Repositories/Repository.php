@@ -50,21 +50,15 @@ abstract class Repository implements RepositoryInterface
 
     public function find($id)
     {
-        [$model, $cacheKey] = $this->cache->findCached($id, null, $this->className);
+        $model = $this->newQuery();
 
-        if (!$model) {
-            $model = $this->newQuery();
-
-            if ($this->relations) {
-                $model->with($this->relations);
-            }
-
-            if ($model = $model->find($id)) {
-                $this->cache->cachePut($cacheKey, $model);
-            }
+        if ($this->relations) {
+            $model->with($this->relations);
         }
 
-        $this->model  = $model;
+        $model = $model->find($id);
+
+        $this->model = $model;
         $this->result = $model;
 
         return $model;
@@ -119,7 +113,7 @@ abstract class Repository implements RepositoryInterface
 
         if (!$model) {
             // Retry in event there's a duplicate race condition
-            $model = retry(2, function() use ($otherModel, $attributes, $keys, $cacheKey, &$created) {
+            $model = retry(2, function () use ($otherModel, $attributes, $keys, $cacheKey, &$created) {
                 $model = $this->newQuery($otherModel);
 
                 $keys = $keys ?: array_keys($attributes);

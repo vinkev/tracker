@@ -1,12 +1,17 @@
 {
     "name": "vinkev/tracker",
-
     "description": "fork with fix to package",
-
-    "keywords": ["tracker", "tracking", "visitor", "logging", "user agent", "mobile detection", "laravel", "pragmarx"],
-
+    "keywords": [
+        "tracker",
+        "tracking",
+        "visitor",
+        "logging",
+        "user agent",
+        "mobile detection",
+        "laravel",
+        "pragmarx"
+    ],
     "license": "MIT",
-
     "authors": [
         {
             "name": "Antonio Carlos Ribeiro",
@@ -14,49 +19,48 @@
             "role": "Creator & Designer"
         }
     ],
-
     "require": {
-        "php": ">=8.0",
-        "doctrine/dbal": "^2.6|^3.1",
-        "laravel/framework": "~5|~6|~7|~8|~9|~10",
-        "pragmarx/support": "~0.6|~0.7|~0.8|~0.9",
-        "ramsey/uuid": "^3 || ^4",
+        "php": "^8.1",
+        "doctrine/dbal": "^3.1|^4.0",
+        "laravel/framework": "^10.0|^11.0|^12.0|^13.0",
+        "ramsey/uuid": "^4.0",
         "jenssegers/agent": "~2.1",
-        "ua-parser/uap-php" : "~3.4",
+        "ua-parser/uap-php": "~3.4",
         "snowplow/referer-parser": "~0.1",
         "jaybizzle/crawler-detect": "~1.0",
-        "psr/log": "^1.1 || ^2.0 || ^3.0"
+        "psr/log": "^3.0",
+        "deivide/laravel-support": "^0.9.5"
     },
-
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/dina-setiana/laravel-support"
+        }
+    ],
     "suggest": {
         "geoip/geoip": "~1.14",
         "geoip2/geoip2": "~2.0"
     },
-
     "require-dev": {
-        "mockery/mockery": "~0.8"
+        "mockery/mockery": "^1.6"
     },
-
     "autoload": {
         "psr-4": {
             "PragmaRX\\Tracker\\": "src/"
         }
     },
-
     "extra": {
         "branch-alias": {
             "dev-master": "2.1.x-dev"
         },
         "laravel": {
             "providers": [
-               "PragmaRX\\Tracker\\Vendor\\Laravel\\ServiceProvider"
+                "PragmaRX\\Tracker\\Vendor\\Laravel\\ServiceProvider"
             ],
             "aliases": {
                 "Tracker": "PragmaRX\\Tracker\\Vendor\\Laravel\\Facade"
             }
         }
     },
-
-    "minimum-stability": "dev",
     "prefer-stable": true
 }
