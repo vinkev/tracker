@@ -499,29 +499,69 @@ For Laravel 4+ please use version 2.0.10.
 
     composer require pragmarx/tracker
 
-#### Add the service provider to your app/config/app.php:
+#### Register the service provider
+
+**Laravel 11, 12 & 13**
+
+Register the service provider in `bootstrap/providers.php`:
 
 ```php
- PragmaRX\Tracker\Vendor\Laravel\ServiceProvider::class,
+return [
+    // ...
+    PragmaRX\Tracker\Vendor\Laravel\ServiceProvider::class,
+];
 ```
 
-#### Add the alias to the facade on your app/config/app.php:
+**Laravel 10 and below**
+
+Register the service provider in `config/app.php`:
 
 ```php
-'Tracker' => 'PragmaRX\Tracker\Vendor\Laravel\Facade',
+'providers' => [
+    // ...
+    PragmaRX\Tracker\Vendor\Laravel\ServiceProvider::class,
+],
+```
+
+#### Register the facade (Optional)
+
+**Laravel 11, 12 & 13**
+
+If you want to use `Tracker` facade, create an alias for it.
+Create an alias in your application (for example in `AppServiceProvider`):
+
+```php
+use Illuminate\Support\Facades\Facade;
+
+Facade::alias(
+    'Tracker', \PragmaRX\Tracker\Vendor\Laravel\Facade\Tracker::class
+);
+```
+
+Alternatively, you may simply resolve the service from the container:
+
+```php
+app('tracker')
+```
+
+**Laravel 10 and below**
+
+Add the alias to the `aliases` array in `config/app.php`:
+
+```php
+'aliases' => [
+    // ...
+    'Tracker' => PragmaRX\Tracker\Vendor\Laravel\Facade\Tracker::class,
+],
 ```
 
 #### Publish tracker configuration:
 
-**Laravel 4**
 
-    php artisan config:publish pragmarx/tracker
-
-**Laravel 5**
 
     php artisan vendor:publish --provider="PragmaRX\Tracker\Vendor\Laravel\ServiceProvider"
 
-#### Enable the Middleware (Laravel 5)
+#### Enable the Middleware
 
 Open the newly published config file found at `app/config/tracker.php` and enable `use_middleware`:
 
@@ -529,25 +569,36 @@ Open the newly published config file found at `app/config/tracker.php` and enabl
 'use_middleware' => true,
 ```
 
-#### Add the Middleware to Laravel Kernel (Laravel 5)
+#### Add the Middleware to Laravel Kernel
 
-Open the file `app/Http/Kernel.php` and add the following to your web middlewares:
+**Laravel 11+**
 
 ```php
-\PragmaRX\Tracker\Vendor\Laravel\Middlewares\Tracker::class,
+// bootstrap/app.php
+->withMiddleware(function ($middleware) {
+    $middleware->web(append: [
+        \PragmaRX\Tracker\Vendor\Laravel\Middlewares\Tracker::class,
+    ]);
+})
 ```
 
-#### Enable Tracker in your config.php (Laravel 4) or tracker.php (Laravel 5)
+**Laravel 10 and below**
+
+```php
+// app/Http/Kernel.php
+
+protected $middlewareGroups = [
+    'web' => [
+        \PragmaRX\Tracker\Vendor\Laravel\Middlewares\Tracker::class,
+    ],
+];
+```
+
+#### Enable Tracker in your config tracker.php
 
 ```php
 'enabled' => true,
 ```
-
-#### Publish the migration
-
-    php artisan tracker:tables
-
-This is only needed if you are on Laravel 4, because `vendor:publish` does it for you in Laravel 5.
 
 #### Create a database connection for it on your `config/database.php`
 
@@ -601,7 +652,7 @@ It is responsible for logging page hits and sessions, basically the client IP ad
 
 ## Multiple authentication drivers
 
-You just have to all your auth IOC bidings to the array:
+You just have to all your auth IOC bindings to the array:
 
 ```php
 'authentication_ioc_binding' => ['auth', 'admin'],
