@@ -2,7 +2,7 @@
 
 namespace PragmaRX\Tracker\Services;
 
-use Illuminate\Foundation\Application;
+use Laravel\Lumen\Application;
 use PragmaRX\Support\Config as Config;
 
 class Authentication

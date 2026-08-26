@@ -3,37 +3,44 @@
 namespace PragmaRX\Tracker\Data\Repositories;
 
 use Carbon\Carbon;
-use Illuminate\Session\SessionManager;
 use PragmaRX\Support\Config;
-use Ramsey\Uuid\Uuid as UUID;
 
 class Session extends Repository
 {
     private $config;
 
-    private $session;
-
     private $sessionInfo;
+    
+    private static array $memorySessionStore = [];
 
     protected $relations = ['device', 'user', 'log', 'language', 'agent', 'referer', 'geoIp', 'cookie'];
 
-    public function __construct($model, Config $config, SessionManager $session)
+    public function __construct($model, Config $config, $session = null)
     {
         $this->config = $config;
-
-        $this->session = $session;
 
         parent::__construct($model);
     }
 
     public function findByUuid($uuid)
     {
+        if (empty($uuid)) {
+            return null;
+        }
+
+        return $this->newQuery()->where('uuid', $uuid)->first();
         [$model, $cacheKey] = $this->cache->findCached($uuid, 'uuid', app()->make('tracker.config')->get('session_model'));
+        \Illuminate\Support\Facades\Log::info("model");
+        \Illuminate\Support\Facades\Log::info($model);
+        \Illuminate\Support\Facades\Log::info("cacheKey");
+        \Illuminate\Support\Facades\Log::info($cacheKey);
 
         if (!$model) {
             $model = $this->newQuery()->where('uuid', $uuid)->first();
 
-            $this->cache->cachePut($cacheKey, $model);
+            if ($model) {
+                $this->cache->cachePut($cacheKey, $model);
+            }
         }
 
         return $model;
@@ -43,12 +50,12 @@ class Session extends Repository
     {
         $this->setSessionData($sessionInfo);
 
-        return $this->sessionGetId($sessionInfo);
+        return $this->sessionGetId();
     }
 
-    public function setSessionData($sessinInfo)
+    public function setSessionData($sessionInfo)
     {
-        $this->generateSession($sessinInfo);
+        $this->generateSession($sessionInfo);
 
         if ($this->sessionIsKnownOrCreateSession()) {
             $this->ensureSessionDataIsComplete();
@@ -93,43 +100,45 @@ class Session extends Repository
 
     private function sessionIsKnownOrCreateSession()
     {
-        if (!$known = $this->sessionIsKnown()) {
-            $this->sessionSetId($this->findOrCreate($this->sessionInfo, ['uuid']));
-        } else {
-            $session = $this->find($this->getSessionData('id'));
+        $uuid = $this->getSystemSessionId();
+        $session = $this->findByUuid($uuid);
 
-            if (!$session->updated_at || $session->updated_at->lte(now()->subMinutes(1))) {
-                $session->updated_at = Carbon::now();
-
-                $session->save();
-            }
-
-            $this->sessionInfo['id'] = $this->getSessionData('id');
-        }
-
-        return $known;
-    }
-
-    private function sessionIsKnown()
-    {
-        if (!$this->session->has($this->getSessionKey())) {
+        if (!$session) {
+            $id = $this->findOrCreate($this->sessionInfo, ['uuid']);
+            $this->sessionSetId($id);
             return false;
         }
 
-        if (!$this->getSessionData('uuid') == $this->getSystemSessionId()) {
-            return false;
-        }
+        $id = $session->getKey();
+        $this->sessionSetId($id);
 
-        if (!$this->findByUuid($this->getSessionData('uuid'))) {
-            return false;
+        $updatedAt = $session->updated_at;
+        $needsUpdate = !$updatedAt || Carbon::parse($updatedAt)->lte(Carbon::now()->subMinutes(1));
+
+        if ($needsUpdate) {
+            $session->updated_at = Carbon::now();
+            $session->exists = true;
+
+            $session->save();
         }
 
         return true;
     }
 
+    private function sessionIsKnown()
+    {   
+        $uuid = $this->getSystemSessionId();
+    
+        return $this->findByUuid($uuid) !== null;
+    }
+
     private function ensureSessionDataIsComplete()
     {
         $sessionData = $this->getSessionData();
+
+        if (empty($sessionData) || empty($this->sessionInfo['id'])) {
+            return;
+        }
 
         $wasComplete = true;
 
@@ -137,17 +146,15 @@ class Session extends Repository
             if (in_array($key, ['user_agent', 'impersonation_id'])) {
                 continue;
             }
-            if ($sessionData[$key] !== $value) {
+            if (isset($sessionData[$key]) && $sessionData[$key] !== $value) {
                 if (!isset($model)) {
                     $model = $this->find($this->sessionInfo['id']);
                 }
 
-                // Avoid setting the user_id back to null
-                if ($key !== 'user_id' || !is_null($value)) {
+                if ($model && ($key !== 'user_id' || !is_null($value))) {
                     $model->setAttribute($key, $value);
+                    $model->save();
                 }
-
-                $model->save();
 
                 $wasComplete = false;
             }
@@ -160,7 +167,7 @@ class Session extends Repository
 
     private function sessionGetId()
     {
-        return $this->sessionInfo['id'];
+        return $this->sessionInfo['id'] ?? null;
     }
 
     private function sessionSetId($id)
@@ -177,13 +184,17 @@ class Session extends Repository
 
     private function getSystemSessionId()
     {
-        $sessionData = $this->getSessionData();
+        $request = request();
 
-        if (isset($sessionData['uuid'])) {
-            return $sessionData['uuid'];
+        if ($request && ($token = $request->bearerToken())) {
+            return hash('sha256', $token);
         }
 
-        return UUID::uuid4()->toString();
+        $ip = $request ? ($request->ip() ?? '0.0.0.0') : '0.0.0.0';
+        $agent = $request ? ($request->userAgent() ?? 'unknown') : 'unknown';
+        $date = date('Y-m-d');
+
+        return md5("{$ip}|{$agent}|{$date}");
     }
 
     private function regenerateSystemSession($data = null)
@@ -199,21 +210,16 @@ class Session extends Repository
         return $this->sessionInfo;
     }
 
-    /**
-     * @param string $variable
-     */
     private function getSessionData($variable = null)
     {
-        $data = $this->session->get($this->getSessionKey());
+        $data = static::$memorySessionStore;
 
-        return $variable
-            ? (isset($data[$variable]) ? $data[$variable] : null)
-            : $data;
+        return $variable ? ($data[$variable] ?? null) : $data;
     }
 
     private function putSessionData($data)
     {
-        $this->session->put($this->getSessionKey(), $data);
+        static::$memorySessionStore = $data;
     }
 
     private function getSessionKey()
@@ -248,7 +254,7 @@ class Session extends Repository
             if (!$result) {
                 $result = $query->get();
 
-                $this->cache->cachePut($cacheKey, $result, 1); // cache only for 1 minute
+                $this->cache->cachePut($cacheKey, $result, 1);
 
                 return $result;
             }
@@ -292,20 +298,22 @@ class Session extends Repository
     {
         $session = $this->checkIfUserChanged($data, $this->find($this->getSessionData('id')));
 
-        foreach ($session->getAttributes() as $name => $value) {
-            if (isset($data[$name]) && $name !== 'id' && $name !== 'uuid') {
-                $session->{$name} = $data[$name];
+        if ($session) {
+            foreach ($session->getAttributes() as $name => $value) {
+                if (isset($data[$name]) && $name !== 'id' && $name !== 'uuid') {
+                    $session->{$name} = $data[$name];
+                }
             }
-        }
 
-        $session->save();
+            $session->save();
+        }
 
         return $data;
     }
 
     private function checkIfUserChanged($data, $model)
     {
-        if (!is_null($model->user_id) && !is_null($data['user_id']) && $data['user_id'] !== $model->user_id) {
+        if ($model && !is_null($model->user_id) && !is_null($data['user_id']) && $data['user_id'] !== $model->user_id) {
             $newSession = $this->regenerateSystemSession($data);
 
             $model = $this->findByUuid($newSession['uuid']);

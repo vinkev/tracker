@@ -2,9 +2,9 @@
 
 namespace PragmaRX\Tracker;
 
-use Illuminate\Foundation\Application as Laravel;
+use Laravel\Lumen\Application as Laravel;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Router;
+use Laravel\Lumen\Routing\Router;
 use PragmaRX\Support\Config;
 use PragmaRX\Support\GeoIp\Updater as GeoIpUpdater;
 use PragmaRX\Support\IpAddress;
@@ -243,7 +243,8 @@ class Tracker
         ];
 
         $authSessionPrefix = $this->config->get('auth_session_prefix');
-        $authSessions      = collect(session()->all())->filter(function ($val, $key) use ($authSessionPrefix) {
+        $sessions          = app()->bound('session') ? app('session')->all() : [];
+        $authSessions      = collect($sessions)->filter(function ($val, $key) use ($authSessionPrefix) {
             return strpos($key, $authSessionPrefix) !== false;
         });
 

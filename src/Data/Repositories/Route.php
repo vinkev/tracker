@@ -24,8 +24,8 @@ class Route extends Repository
 
         return
             !$forbidden ||
-            !$route->currentRouteName() ||
-            !in_array_wildcard($route->currentRouteName(), $forbidden);
+            !request()->route()[1]['as'] ||
+            !in_array_wildcard(request()->route()[1]['as'], $forbidden);
     }
 
     public function pathIsTrackable($path)
