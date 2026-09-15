@@ -17,7 +17,7 @@ class Tracker
      */
     public function handle($request, Closure $next)
     {
-        if (Config::get('tracker.enabled')) {
+        if (config('tracker.enabled')) {
             app('tracker')->boot();
         }
 

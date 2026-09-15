@@ -5,7 +5,7 @@ namespace PragmaRX\Tracker\Support;
 use Cache as IlluminateCache;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Application;
+use Laravel\Lumen\Application;
 use PragmaRX\Support\Config as Config;
 
 class Cache
